@@ -23,24 +23,30 @@ fn main() {
     let web_options = eframe::WebOptions::default();
 
     wasm_bindgen_futures::spawn_local(async {
-        let start_result = eframe::WebRunner::new()
+        fn get_loading_text() -> Option<web_sys::Element> {
+            web_sys::window()
+                .and_then(|w| w.document())
+                .and_then(|d| d.get_element_by_id("loading_text"))
+        }
+
+        let previous_hook = std::panic::take_hook();
+        std::panic::set_hook(Box::new(move |panic_info| {
+            // Show in the HTML that start has failed
+            get_loading_text().map(|e| e.set_inner_html("<p> the app has crashed </p"));
+            // Propagate panic info to the previously registered panic hook
+            previous_hook(panic_info);
+        }));
+
+        eframe::WebRunner::new()
             .start(
                 "the_canvas_id", // hardcode it
                 web_options,
                 Box::new(|cc| Box::new(eframe_template::TemplateApp::new(cc))),
             )
-            .await;
-        let loading_text = web_sys::window()
-            .and_then(|w| w.document())
-            .and_then(|d| d.get_element_by_id("loading_text"));
-        match start_result {
-            Ok(_) => {
-                loading_text.map(|e| e.remove());
-            }
-            Err(e) => {
-                loading_text.map(|e| e.set_inner_html("<p> the app has crashed </p"));
-                panic!("failed to start eframe: {e:?}");
-            }
-        }
+            .await
+            .expect("should start eframe");
+
+        // loaded successfully, remove the loading indicator
+        get_loading_text().map(|e| e.remove());
     });
 }
