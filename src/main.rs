@@ -32,7 +32,11 @@ fn main() {
         let previous_hook = std::panic::take_hook();
         std::panic::set_hook(Box::new(move |panic_info| {
             // Show in the HTML that start has failed
-            get_loading_text().map(|e| e.set_inner_html("<p> the app has crashed </p"));
+            get_loading_text().map(|e| {
+                e.set_inner_html(
+                    "<p> The app has crashed. See the developer console for details. </p>",
+                )
+            });
             // Propagate panic info to the previously registered panic hook
             previous_hook(panic_info);
         }));
